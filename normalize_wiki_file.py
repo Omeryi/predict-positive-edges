@@ -37,7 +37,7 @@ def normalize_wiki():
     return res
 
 def write_wiki_file(normalized_wiki):
-    with open(DATASET_PATH + TSV_FILE_NAME, "w") as csvfile:
+    with open(DATASET_PATH + TSV_FILE_NAME, "w", newline = "") as csvfile:
         fieldnames = TSV_FIELDS
         writer = csv.DictWriter(csvfile, delimiter="\t", fieldnames=fieldnames)
 

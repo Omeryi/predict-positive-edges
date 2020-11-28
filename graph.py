@@ -1,18 +1,15 @@
 import networkx as nx 
 import matplotlib.pyplot as plt
-
+import csv
 
 # TODO CHANGE TO WORK WITH PANDAS
 def build_graph(tsv):
     graph = nx.DiGraph()
     tsv_file = open(tsv, "r")
-    # CHANGE : NOT 10
-    lines = tsv_file.readlines()[:10]
-    # First line contains tsv headers
-    for line in lines[1:]:
-        edge_details = line.strip().split('\t')
-        graph.add_edge(edge_details[0], edge_details[1], weight = edge_details[2])
-        
+    # skip headers line:
+    next(tsv_file)
+    for line in csv.reader(tsv_file, delimiter="\t"):
+        graph.add_edge(line[0], line[1], weight = line[2])
     return graph
 
 
