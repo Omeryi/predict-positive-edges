@@ -2,6 +2,8 @@ import pandas as pd
 import graph as helper
 import networkx as nx
 import itertools
+import warnings
+
 from datetime import datetime
 
 def compute_degrees(tsv_file):
@@ -54,17 +56,24 @@ TRIADS_TYPES = [(0,0,0,0),
 def get_triad_status(u, w, v, triad, graph_df):
     first_edge = 0
     second_edge = 0
-    
+
+    sign1 = -1 if triad[1] else 1
+    sign2 = -1 if triad[3] else 1
+
     if (not triad[0]):
-        first_edge = graph_df[(graph_df.ToNodeId == w) & (graph_df.FromNodeId == u) & (graph_df.Sign == -1 if triad[1] else 1)].shape[0]
+        first_edge = \
+        graph_df[(graph_df.ToNodeId == int(w)) & (graph_df.FromNodeId == int(u)) & (graph_df.Sign == sign1)].shape[0]
     else:
-        first_edge = graph_df[(graph_df.ToNodeId == u) & (graph_df.FromNodeId == w) & (graph_df.Sign == -1 if triad[1] else 1)].shape[0]
-        
+        first_edge = \
+        graph_df[(graph_df.ToNodeId == int(u)) & (graph_df.FromNodeId == int(w)) & (graph_df.Sign == sign1)].shape[0]
+
     if (not triad[2]):
-        second_edge = graph_df[(graph_df.ToNodeId == w) & (graph_df.FromNodeId == v) & (graph_df.Sign == -1 if triad[3] else 1)].shape[0]
+        second_edge = \
+        graph_df[(graph_df.ToNodeId == int(w)) & (graph_df.FromNodeId == int(v)) & (graph_df.Sign == sign2)].shape[0]
     else:
-        second_edge = graph_df[(graph_df.ToNodeId == v) & (graph_df.FromNodeId == w) & (graph_df.Sign == -1 if triad[3] else 1)].shape[0]
-        
+        second_edge = \
+        graph_df[(graph_df.ToNodeId == int(v)) & (graph_df.FromNodeId == int(w)) & (graph_df.Sign == sign2)].shape[0]
+
     return 1 if (first_edge and second_edge) else 0
           
 def compute_triads(tsv_file):
@@ -80,7 +89,8 @@ def compute_triads(tsv_file):
         for w in sorted(nx.common_neighbors(undirected_graph, u, v)):
             for triad in TRIADS_TYPES:
                 triad_status = get_triad_status(u, w, v, triad, graph_df)
-                print(triad_status)
+                if triad_status:
+                    print(u,w,v,triad,triad_status)
                 triads_df.at[(u,v), str(triad)] = triads_df.at[(u,v), str(triad)] + triad_status
 
     return triads_df
