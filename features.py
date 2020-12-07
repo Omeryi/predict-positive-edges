@@ -52,6 +52,23 @@ TRIADS_TYPES = [(0,0,0,0),
                (1,1,1,0),
                (1,1,1,1)]
 
+REVERSE_TRIADS = {(0,0,0,0): (0,0,0,0),
+               (0,0,0,1): (0, 1, 0, 0),
+               (0,0,1,0): (1, 0, 0, 0),
+               (0,0,1,1): (1, 1, 0, 0),
+               (0,1,0,0): (0, 0, 0, 1),
+               (0,1,0,1): (0, 1, 0, 1),
+               (0,1,1,0): (1, 0, 0, 1),
+               (0,1,1,1): (1, 1, 0, 1),
+               (1,0,0,0): (0, 0, 1, 0),
+               (1,0,0,1): (0, 1, 1, 0),
+               (1,0,1,0): (1, 0, 1, 0),
+               (1,0,1,1): (1, 1, 1, 0),
+               (1,1,0,0): (0, 0, 1, 1),
+               (1,1,0,1): (0, 1, 1, 1),
+               (1,1,1,0): (1, 0, 1, 1),
+               (1,1,1,1): (1, 1, 1, 1)}
+
 
 def get_triad_status(u, w, v, triad, graph_df):
     first_edge = 0
@@ -85,12 +102,20 @@ def compute_triads(tsv_file):
     triads_index = [(u,v) for (u,v) in itertools.permutations(graph.nodes(), 2)]
     triads_df = pd.DataFrame(triads_data, triads_index)
     
-    for (u,v) in itertools.permutations(graph.nodes(), 2):
+    for (u,v) in itertools.combinations(graph.nodes(), 2):
         for w in sorted(nx.common_neighbors(undirected_graph, u, v)):
             for triad in TRIADS_TYPES:
                 triad_status = get_triad_status(u, w, v, triad, graph_df)
                 if triad_status:
                     print(u,w,v,triad,triad_status)
-                triads_df.at[(u,v), str(triad)] = triads_df.at[(u,v), str(triad)] + triad_status
+                    triads_df.at[(u,v), str(triad)] +=1
+                    triads_df.at[(v,u), str(REVERSE_TRIADS[triad])] +=1
 
     return triads_df
+
+if __name__ == '__main__':
+    time_of_start_computation = datetime.now()
+    compute_triads("./wiki-demo-5.tsv").to_csv("output5", sep="\t")
+    time_of_end_computation = datetime.now()
+    triads_time = time_of_end_computation - time_of_start_computation
+    print(triads_time)
