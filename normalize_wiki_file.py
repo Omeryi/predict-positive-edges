@@ -3,7 +3,7 @@ import collections
 
 DATASET_PATH = "./datasets/"
 WIKI_FILE_NAME = "wikiElec.ElecBs3.txt"
-TSV_FILE_NAME = "wiki.tsv"
+TSV_FILE_NAME = "wiki_without_aggregation.tsv"
 TSV_FIELDS = ["FromNodeId", "ToNodeId", "Sign"]
 
 # Create list of lists as each sublist represents a given vote
@@ -35,7 +35,8 @@ def normalize_wiki():
             voter_id = vote_result[2]
             choice = vote_result[1]
             # Aggregate all votes of voter on a given voted
-            res[voter_id][voted_user] += int(choice)
+            if res[voter_id][voted_user] == 0:
+                res[voter_id][voted_user] = int(choice)
 
     return res
 
@@ -47,10 +48,10 @@ def write_wiki_file(normalized_wiki):
         writer.writeheader()
         
         for voter_id, voter_votes in normalized_wiki.items():
-            for voted_user, aggregated_choice in voter_votes.items():
-                if aggregated_choice == 0:
+            for voted_user, choice in voter_votes.items():
+                if choice == 0:
                     continue
-                writer.writerow({TSV_FIELDS[0]: voter_id, TSV_FIELDS[1]: voted_user, TSV_FIELDS[2]: 1 if aggregated_choice > 0 else -1})
+                writer.writerow({TSV_FIELDS[0]: voter_id, TSV_FIELDS[1]: voted_user, TSV_FIELDS[2]: choice})
 
 def create_wiki_tsv_file():
     normalized = normalize_wiki()
