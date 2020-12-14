@@ -4,7 +4,8 @@ import networkx as nx
 import itertools
 import numpy as np
 import multiprocessing as mp
-
+from tqdm import tqdm 
+  
 from datetime import datetime
 
 def compute_degrees(tsv_file):
@@ -130,7 +131,6 @@ class A:
         self.graph_df = pd.read_csv(tsv_file, sep='\t')
         graph = helper.build_graph(tsv_file)
         self.undirected_graph = graph.to_undirected()
-
         triads_df = self.build_triads_df(graph)
         # triads_df.to_csv("tr1", sep = "\t")
         # cs = math.floor(rows_count/NUMBER_OF_CORES)
@@ -149,8 +149,8 @@ class A:
 
 if __name__ == '__main__':
     time_of_start_computation = datetime.now()
-    td = A().compute_triads("./datasets/wiki-demo-1000.tsv")
-    td.to_csv("DIE1000", sep = "\t")
+    td = A().compute_triads("./datasets/wiki-demo-500.tsv")
+    td.to_csv("300", sep = "\t")
     time_of_end_computation = datetime.now()
     triads_time = time_of_end_computation - time_of_start_computation
     print(triads_time)

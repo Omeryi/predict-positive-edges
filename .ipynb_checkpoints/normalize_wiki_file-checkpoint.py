@@ -6,6 +6,7 @@ WIKI_FILE_NAME = "wikiElec.ElecBs3.txt"
 TSV_FILE_NAME = "wiki.tsv"
 TSV_FIELDS = ["FromNodeId", "ToNodeId", "Sign"]
 
+# Create list of lists as each sublist represents a given vote
 def tokenize_wiki():
     wiki_file = open(DATASET_PATH + WIKI_FILE_NAME, encoding="latin-1")
     lines = wiki_file.readlines()
@@ -24,6 +25,7 @@ def tokenize_wiki():
         res.append(current)
     return res
 
+# Extract all votes from each vote documanted
 def normalize_wiki():
     raw_votes = tokenize_wiki()
     res = collections.defaultdict(lambda: collections.defaultdict(lambda: 0))
@@ -32,6 +34,7 @@ def normalize_wiki():
         for vote_result in [l for l in vote_entries if l[0] == "V"]:
             voter_id = vote_result[2]
             choice = vote_result[1]
+            # Aggregate all votes of voter on a given voted
             res[voter_id][voted_user] += int(choice)
 
     return res
