@@ -130,8 +130,9 @@ class A:
     def process_frame(self, triads_df):
         graph_df = self.graph_df
         for (u, v), row in triads_df.iterrows():
-            if (graph_df[(graph_df.ToNodeId == 30) & (graph_df.FromNodeId == 3)].any()[0]):
-                triads_df.at[(u, v), 'edge_sign'] = graph_df[(graph_df.ToNodeId == 30) & (graph_df.FromNodeId == 3)].Sign[0]
+            if (graph_df[(graph_df.ToNodeId == int(v)) & (graph_df.FromNodeId == int(u))].any()[0]):
+                triads_df.at[(u, v), 'edge_sign'] = graph_df[(graph_df.ToNodeId == int(v)) & (graph_df.FromNodeId == int(u))].Sign
+
 
             triads_dict_for_pair = {triad: 0 for triad in TRIADS_TYPES}
             for w in sorted(nx.common_neighbors(self.undirected_graph, u, v)):
@@ -165,11 +166,6 @@ class A:
         self.graph = graph
         self.undirected_graph = graph.to_undirected()
         triads_df = self.build_triads_df(graph)
-        # triads_df.to_csv("tr1", sep = "\t")
-        # cs = math.floor(rows_count/NUMBER_OF_CORES)
-
-        # reader = pd.read_table("tr1", chunksize=cs)
-        # pool = mp.Pool(NUMBER_OF_CORES)
 
         triads_df_split = np.array_split(triads_df, NUMBER_OF_CORES)
         pool = mp.Pool(NUMBER_OF_CORES)
@@ -183,7 +179,7 @@ class A:
 if __name__ == '__main__':
     time_of_start_computation = datetime.now()
     td = A().compute_triads("./datasets/wiki-demo-1000.tsv")
-    td.to_csv("mini-wiki-features", sep="\t")
+    td.to_csv("wiki-features-1000-lines", sep="\t")
     time_of_end_computation = datetime.now()
     triads_time = time_of_end_computation - time_of_start_computation
     print(triads_time)
