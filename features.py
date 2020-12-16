@@ -15,7 +15,7 @@ def compute_degrees(tsv_file):
     graph = helper.build_graph(tsv_file)
     data = {'positive_in_degree': [0], 'positive_out_degree': [0], 'negative_in_degree': [0],
             'negative_out_degree': [0]}
-    degrees_df = pd.DataFrame(data, index=[node for node in graph.nodes()])
+    degrees_df = pd.DataFrame(data, index=[int(node) for node in graph.nodes()])
 
     # fill new data frame with data:
     for node in graph.nodes():
@@ -93,7 +93,8 @@ class A:
                         'negative_in_degree(v)': [0], 'negative_out_degree(v)': [0], 'edge_sign': [0]}
         triads_data.update(degrees_data)
         triads_index = []
-        for (u, v) in itertools.combinations(graph.nodes(), 2):
+        nodes_with_data = set(itertools.chain(*list(graph.edges)))
+        for (u, v) in itertools.combinations(nodes_with_data, 2):
             triads_index.extend([(u, v), (v, u)])
 
         triads_df = pd.DataFrame(triads_data, triads_index)
@@ -178,8 +179,8 @@ class A:
 
 if __name__ == '__main__':
     time_of_start_computation = datetime.now()
-    td = A().compute_triads("./datasets/wiki-demo-1000.tsv")
-    td.to_csv("wiki-features-1000-lines", sep="\t")
+    td = A().compute_triads("./datasets/wiki-demo-10.tsv")
+    td.to_csv("wiki-features-10-lines-v1", sep="\t")
     time_of_end_computation = datetime.now()
     triads_time = time_of_end_computation - time_of_start_computation
     print(triads_time)

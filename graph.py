@@ -1,15 +1,17 @@
 import networkx as nx 
 import matplotlib.pyplot as plt
 import csv
+import pandas as pd
 
 # TODO CHANGE TO WORK WITH PANDAS
 def build_graph(tsv):
     graph = nx.DiGraph()
     tsv_file = open(tsv, "r")
+    df = pd.read_csv(tsv, sep="\t")
     # skip headers line:
     next(tsv_file)
     # TODO FIND ACTUAL MAX
-    for i in range(8284):
+    for i in range(df.max().max()):
         if i not in graph.nodes():
             graph.add_node(i)
     for line in csv.reader(tsv_file, delimiter="\t"):
