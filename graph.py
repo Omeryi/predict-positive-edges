@@ -8,8 +8,12 @@ def build_graph(tsv):
     tsv_file = open(tsv, "r")
     # skip headers line:
     next(tsv_file)
+    # TODO FIND ACTUAL MAX
+    for i in range(8284):
+        if i not in graph.nodes():
+            graph.add_node(i)
     for line in csv.reader(tsv_file, delimiter="\t"):
-        graph.add_edge(line[0], line[1], weight = line[2])
+        graph.add_edge(int(line[0]), int(line[1]), weight = int(line[2]))
     return graph
 
 
