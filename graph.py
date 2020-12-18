@@ -10,7 +10,6 @@ def build_graph(tsv):
     df = pd.read_csv(tsv, sep="\t")
     # skip headers line:
     next(tsv_file)
-    # TODO FIND ACTUAL MAX
     for i in range(df.max().max()):
         if i not in graph.nodes():
             graph.add_node(i)
