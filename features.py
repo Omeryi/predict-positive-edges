@@ -179,8 +179,8 @@ class A:
 
 if __name__ == '__main__':
     time_of_start_computation = datetime.now()
-    td = A().compute_triads("./datasets/wiki-demo-10.tsv")
-    td.to_csv("wiki-features-10-lines-v1", sep="\t")
+    td = A().compute_triads("./datasets/wiki_without_aggregation.tsv")
+    td.to_csv("wiki-full-features", sep="\t")
     time_of_end_computation = datetime.now()
     triads_time = time_of_end_computation - time_of_start_computation
     print(triads_time)

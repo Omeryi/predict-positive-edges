@@ -113,6 +113,9 @@ class A:
             count = 0
             for node in (u, v):
                 node_id = int(node)
+                # demo < 0 -> positive reviews.  demo > 0 -> negative reviews
+                # axis = 0 -> incoming.          axis = 1 -> outgoing
+
                 triads_df.at[(u, v), 'positive_in_degree({})'.format('v' if count else 'u')] = self.positive_in[node_id]
                 triads_df.at[(u, v), 'positive_out_degree({})'.format('v' if count else 'u')] = self.positive_out[node_id]
                 triads_df.at[(u, v), 'negative_in_degree({})'.format('v' if count else 'u')] = self.negative_in[node_id]
@@ -138,29 +141,20 @@ class A:
         pool = mp.Pool(NUMBER_OF_CORES)
         parts = pool.map(self.process_frame, triads_df_split)
         df = pd.concat(parts)
+        # df = self.process_frame(triads_df)
         pool.close()
         pool.join()
-
         return df
 
 
 if __name__ == '__main__':
-    print("slashdot start")
 
-    t1 = time_of_start_computation = datetime.now()
-    td = A().compute_triads("./soc-sign-Slashdot090221.tsv")
-    td.to_csv("slashdot-full-features-sec", sep="\t")
-    t2 = datetime.now()
-    triads_time = t2 - t1
-    print(triads_time)
+    td = A().compute_triads("./datasets/wiki-demo-100.tsv")
+    td.to_csv("features-100-refactored.tsv", sep="\t")
 
-    print("epinions start")
-
-    t3 = time_of_start_computation = datetime.now()
-    td = A().compute_triads("./soc-sign-epinions.tsv")
-    td.to_csv("epinions-full-features", sep="\t")
-    t4 = datetime.now()
-    triads_time = t4 - t3
-    print(triads_time)
-
-
+    # time_of_start_computation = datetime.now()
+    # td = A().compute_triads("./datasets/wiki-demo-1000.tsv")
+    # td.to_csv("wiki-features-1000-lines-v2", sep="\t")
+    # time_of_end_computation = datetime.now()
+    # triads_time = time_of_end_computation - time_of_start_computation
+    # print(triads_time)
