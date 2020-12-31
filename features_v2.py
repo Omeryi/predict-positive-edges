@@ -5,7 +5,6 @@ import itertools
 import numpy as np
 import multiprocessing as mp
 from tqdm import tqdm
-
 from datetime import datetime
 
 # Each triad type is represented by four digits as each digit may be 0 or 1.
@@ -32,36 +31,19 @@ TRIADS_TYPES = [(0, 0, 0, 0),
                 (1, 1, 1, 0),
                 (1, 1, 1, 1)]
 
-# currently redundent
-REVERSE_TRIADS = {(0, 0, 0, 0): (0, 0, 0, 0),
-                  (0, 0, 0, 1): (0, 1, 0, 0),
-                  (0, 0, 1, 0): (1, 0, 0, 0),
-                  (0, 0, 1, 1): (1, 1, 0, 0),
-                  (0, 1, 0, 0): (0, 0, 0, 1),
-                  (0, 1, 0, 1): (0, 1, 0, 1),
-                  (0, 1, 1, 0): (1, 0, 0, 1),
-                  (0, 1, 1, 1): (1, 1, 0, 1),
-                  (1, 0, 0, 0): (0, 0, 1, 0),
-                  (1, 0, 0, 1): (0, 1, 1, 0),
-                  (1, 0, 1, 0): (1, 0, 1, 0),
-                  (1, 0, 1, 1): (1, 1, 1, 0),
-                  (1, 1, 0, 0): (0, 0, 1, 1),
-                  (1, 1, 0, 1): (0, 1, 1, 1),
-                  (1, 1, 1, 0): (1, 0, 1, 1),
-                  (1, 1, 1, 1): (1, 1, 1, 1)}
 
 NUMBER_OF_CORES = mp.cpu_count()
 
 
-class A:
+class Features_calculator:
     def __init__(self):
-        self.triads_df = None
+        self.features_df = None
         self.graph = None
         self.matrix = None
         self.undirected_graph = None
 
     @staticmethod
-    def build_triads_df(graph):
+    def build_features_df(graph):
         triads_data = {str(triad): 0 for triad in TRIADS_TYPES}
         degrees_data = {'positive_in_degree(u)': [0], 'positive_out_degree(u)': [0], 'negative_in_degree(u)': [0],
                         'negative_out_degree(u)': [0], 'positive_in_degree(v)': [0], 'positive_out_degree(v)': [0],
@@ -72,8 +54,8 @@ class A:
         for (u, v) in itertools.combinations(nodes_with_data, 2):
             triads_index.extend([(u, v), (v, u)])
 
-        triads_df = pd.DataFrame(triads_data, triads_index)
-        return triads_df
+        features_df = pd.DataFrame(triads_data, triads_index)
+        return features_df
 
     @staticmethod
     def get_triad_status(u, w, v, triad, matrix):
@@ -96,10 +78,11 @@ class A:
 
         return 1 if (first_edge and second_edge) else 0
 
-    def process_frame(self, triads_df):
-        for (u, v), row in triads_df.iterrows():
+
+    def process_frame(self, features_df):
+        for (u, v), row in features_df.iterrows():
             if self.matrix[u, v] != 0:
-                triads_df.at[(u, v), 'edge_sign'] = self.matrix[u, v]
+                features_df.at[(u, v), 'edge_sign'] = self.matrix[u, v]
 
             triads_dict_for_pair = {triad: 0 for triad in TRIADS_TYPES}
             for w in sorted(nx.common_neighbors(self.undirected_graph, u, v)):
@@ -108,40 +91,40 @@ class A:
                     if triad_status:
                         triads_dict_for_pair[triad] += 1
             for triad in triads_dict_for_pair.keys():
-                triads_df.at[(u, v), str(triad)] = triads_dict_for_pair[triad]
+                features_df.at[(u, v), str(triad)] = triads_dict_for_pair[triad]
 
             count = 0
             for node in (u, v):
                 node_id = int(node)
-                # demo < 0 -> positive reviews.  demo > 0 -> negative reviews
-                # axis = 0 -> incoming.          axis = 1 -> outgoing
 
-                triads_df.at[(u, v), 'positive_in_degree({})'.format('v' if count else 'u')] = self.positive_in[node_id]
-                triads_df.at[(u, v), 'positive_out_degree({})'.format('v' if count else 'u')] = self.positive_out[node_id]
-                triads_df.at[(u, v), 'negative_in_degree({})'.format('v' if count else 'u')] = self.negative_in[node_id]
-                triads_df.at[(u, v), 'negative_out_degree({})'.format('v' if count else 'u')] = self.negative_out[node_id]
+                features_df.at[(u, v), 'positive_in_degree({})'.format('v' if count else 'u')] = self.positive_in[node_id]
+                features_df.at[(u, v), 'positive_out_degree({})'.format('v' if count else 'u')] = self.positive_out[node_id]
+                features_df.at[(u, v), 'negative_in_degree({})'.format('v' if count else 'u')] = self.negative_in[node_id]
+                features_df.at[(u, v), 'negative_out_degree({})'.format('v' if count else 'u')] = self.negative_out[node_id]
 
                 count += 1
 
-        return triads_df
+        return features_df
 
-    def compute_triads(self, tsv_file):
+    def compute_features(self, tsv_file):
         graph = helper.build_graph(tsv_file)
         self.graph = graph
         self.undirected_graph = graph.to_undirected()
-        triads_df = self.build_triads_df(graph)
+        features_df = self.build_features_df(graph)
         self.matrix = nx.to_numpy_matrix(graph, weight="weight")
 
+        # demo < 0 -> positive reviews.  demo > 0 -> negative reviews
+        # axis = 0 -> incoming.          axis = 1 -> outgoing
         self.positive_in = np.where(self.matrix < 0, 0, self.matrix).sum(axis=0)
         self.positive_out = np.where(self.matrix < 0, 0, self.matrix).sum(axis=1)
         self.negative_in = -1*np.where(self.matrix > 0, 0, self.matrix).sum(axis=0)
         self.negative_out = -1*np.where(self.matrix > 0, 0, self.matrix).sum(axis=1)
 
-        triads_df_split = np.array_split(triads_df, NUMBER_OF_CORES)
+        features_df_split = np.array_split(features_df, NUMBER_OF_CORES)
         pool = mp.Pool(NUMBER_OF_CORES)
-        parts = pool.map(self.process_frame, triads_df_split)
+        parts = pool.map(self.process_frame, features_df_split)
         df = pd.concat(parts)
-        # df = self.process_frame(triads_df)
+        # df = self.process_frame(features_df)
         pool.close()
         pool.join()
         return df
@@ -149,11 +132,11 @@ class A:
 
 if __name__ == '__main__':
 
-    td = A().compute_triads("./datasets/wiki-demo-100.tsv")
-    td.to_csv("features-100-refactored.tsv", sep="\t")
+    td = Features_calculator().compute_features("./datasets/wiki-demo-100.tsv")
+    td.to_csv("features-100-refactored-test.tsv", sep="\t")
 
     # time_of_start_computation = datetime.now()
-    # td = A().compute_triads("./datasets/wiki-demo-1000.tsv")
+    # td = A().compute_features("./datasets/wiki-demo-1000.tsv")
     # td.to_csv("wiki-features-1000-lines-v2", sep="\t")
     # time_of_end_computation = datetime.now()
     # triads_time = time_of_end_computation - time_of_start_computation
