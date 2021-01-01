@@ -12,6 +12,7 @@ from datetime import datetime
 from sklearn.linear_model import LogisticRegression
 # from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
+from sklearn.model_selection import cross_val_predict
 
 
 def mirror_pair(pair, embeddedness_matrix, adj, existance_mat, marker):
@@ -64,24 +65,20 @@ def split_data_balanced(features_file, tsv_file):
     # Matrix M[i,j] marks whether both Nodes i and j exists in the graph
     existance_mat = calc_existence_mat(real_nodes)
 
-    pos = list(zip(*np.where(adj > 0)))
-    random.shuffle(pos)
-    test_pos = pos[:len(pos) // 10]
-    mirrors = filter(lambda p: p is not None,
-                     [mirror_pair(p, embeddedness_matrix, adj, existance_mat, marker) for p in test_pos])
+    X, y = features.drop('edge_sign', axis=1), features['edge_sign']
+    positives = list(zip(*np.where(adj > 0)))
+    random.shuffle(positives)
+    splitter = []
 
-    # features = features.set_index('Unnamed: 0')
-    test = [*test_pos, *mirrors]
-    test_df = features[features['Unnamed: 0'].isin([str(t) for t in test])]
-    train_df = features.drop(test_df.index, errors='ignore')
+    for test_chunk in np.array_split(positives, 10):
+        mirrors = filter(lambda p: p is not None,
+                         [mirror_pair(p, embeddedness_matrix, adj, existance_mat, marker) for p in test_chunk])
+        curr_test_vals = map(tuple, [*test_chunk, *mirrors])
 
-    test_df = test_df.drop(['Unnamed: 0'], axis=1)
-    train_df = train_df.drop(['Unnamed: 0'], axis=1)
-
-    X_train, y_train = train_df.drop('edge_sign', axis=1), train_df['edge_sign']
-    X_test, y_test = test_df.drop('edge_sign', axis=1), test_df['edge_sign']
-
-    return X_train, X_test, y_train, y_test
+        curr_test = features[features['Unnamed: 0'].isin([str(t) for t in curr_test_vals])]
+        curr_train = features.drop(curr_test.index)
+        splitter.append((list(curr_train.index), list(curr_test.index)))
+    return X.drop(['Unnamed: 0'], axis=1), y, splitter
 
 
 def predict(features_file, tsv_file):
@@ -89,22 +86,21 @@ def predict(features_file, tsv_file):
     data = data[(data.T != 0).any()]
     data = data.drop('K', axis=1)
 
-    X_train, X_test, y_train, y_test = split_data_balanced(features_file, tsv_file)
-    logmodel = LogisticRegression(n_jobs=mp.cpu_count())
-    logmodel.fit(X_train, y_train)
-    predictions = logmodel.predict(X_test)
-    return classification_report(y_test, predictions)
+    X, y, splitter = split_data_balanced(features_file, tsv_file)
+    logmodel = LogisticRegression(max_iter=1000, n_jobs=-1)
+    predictions = cross_val_predict(logmodel, X, y, cv=splitter)
+    return classification_report(y, predictions)
 
 
 if __name__ == "__main__":
     print("K")
-    print(predict('./features-100-refactored.tsv', './datasets/wiki-demo-100.tsv'))
+    print(predict('./calculated_features/features-100-refactored.tsv', './datasets/wiki-demo-100.tsv'))
 
     # print("var1")
     # t1 = time_of_start_computation = datetime.now()
     #
-    # with open('out-wiki-ml-varient1.tsv', 'w') as f:
-    #     print(predict('./calculated_features/wiki-full-features.tsv'), file=f)
+    # with open('out-wiki-ml-varient1-maxiter.tsv', 'w') as f:
+    #     print(predict('./calculated_features/wiki-full-features.tsv', './datasets/wiki.tsv'), file=f)
     #
     # t2 = datetime.now()
     # triads_time = t2 - t1
@@ -112,8 +108,8 @@ if __name__ == "__main__":
     #
     # print("var2")
     # t1 = time_of_start_computation = datetime.now()
-    # with open('out-wiki-ml-varient2.tsv', 'w') as f:
-    #     print(predict('./calculated_features/wiki-varient2-full-features.tsv', ), file=f)
+    # with open('out-wiki-ml-varient2-maxiter.tsv', 'w') as f:
+    #     print(predict('./calculated_features/wiki-varient2-full-features.tsv', './datasets/variant2-wiki.tsv'), file=f)
     #
     # t2 = datetime.now()
     # triads_time = t2 - t1
@@ -121,8 +117,17 @@ if __name__ == "__main__":
     #
     # print("var3")
     # t1 = time_of_start_computation = datetime.now()
-    # with open('out-wiki-ml-varient3.tsv', 'w') as f:
-    #     print(predict('./calculated_features/wiki-varient3-full-features.tsv'), file=f)
+    # with open('out-wiki-ml-varient3-maxiter.tsv', 'w') as f:
+    #     print(predict('./calculated_features/wiki-varient3-full-features.tsv', './datasets/variant3-wiki.tsv'), file=f)
+    #
+    # t2 = datetime.now()
+    # triads_time = t2 - t1
+    # print(triads_time)
+    #
+    # print("var4")
+    # t1 = time_of_start_computation = datetime.now()
+    # with open('out-wiki-ml-varient4-maxiter.tsv', 'w') as f:
+    #     print(predict('./calculated_features/wiki-varient4-full-features.tsv', './datasets/variant4-wiki.tsv'), file=f)
     #
     # t2 = datetime.now()
     # triads_time = t2 - t1
