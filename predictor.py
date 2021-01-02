@@ -1,18 +1,20 @@
-import pandas as pd
+import functools
+import random
+
 import networkx as nx
 import numpy as np
-import multiprocessing as mp
-import random
-import functools
-import graph as helper
-
+import pandas as pd
 from scipy import sparse
-from datetime import datetime
-
-from sklearn.linear_model import LogisticRegression
-# from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
-from sklearn.model_selection import cross_val_predict
+from xgboost import XGBClassifier
+
+import graph as helper
+import logging
+
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-8s %(message)s',
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S')
 
 
 def mirror_pair(pair, embeddedness_matrix, adj, existance_mat, marker):
@@ -46,8 +48,10 @@ def calc_existence_mat(nodes):
 
 
 def split_data_balanced(features_file, tsv_file):
+    logging.info("reading features")
     features = pd.read_csv(features_file, sep="\t")
 
+    logging.info("preprocessing")
     # calculate adj matrix
     G, real_nodes = helper.build_graph(tsv_file, record_fake_data=True)
 
@@ -65,38 +69,56 @@ def split_data_balanced(features_file, tsv_file):
     # Matrix M[i,j] marks whether both Nodes i and j exists in the graph
     existance_mat = calc_existence_mat(real_nodes)
 
+    logging.info("get positives")
     X, y = features.drop('edge_sign', axis=1), features['edge_sign']
     positives = list(zip(*np.where(adj > 0)))
     random.shuffle(positives)
     splitter = []
 
     for test_chunk in np.array_split(positives, 10):
+        logging.info("mirroring")
         mirrors = filter(lambda p: p is not None,
                          [mirror_pair(p, embeddedness_matrix, adj, existance_mat, marker) for p in test_chunk])
         curr_test_vals = map(tuple, [*test_chunk, *mirrors])
 
+        logging.info("slicing")
         curr_test = features[features['Unnamed: 0'].isin([str(t) for t in curr_test_vals])]
         curr_train = features.drop(curr_test.index)
         splitter.append((list(curr_train.index), list(curr_test.index)))
     return X.drop(['Unnamed: 0'], axis=1), y, splitter
 
 
+# def train_and_predict(train, test):
+    # logmodel = LogisticRegression(solver='sag', n_jobs=-1)
+    # logmodel.fit(X.loc[train], y.loc[train])
+    # predictions = logmodel.predict(X.loc[test])
+    # return (classification_report(y.loc[test], predictions))
+
 def predict(features_file, tsv_file):
     data = pd.read_csv(features_file, sep="\t").rename(columns={'Unnamed: 0': 'K'})  # load data set
     data = data[(data.T != 0).any()]
     data = data.drop('K', axis=1)
 
+    logging.info("splitting")
     X, y, splitter = split_data_balanced(features_file, tsv_file)
+
     for train, test in splitter:
-        logmodel = LogisticRegression(max_iter=1000, n_jobs=-1)
+        logging.info("classifying X")
+        logmodel = XGBClassifier(n_jobs=10)
         logmodel.fit(X.loc[train], y.loc[train])
         predictions = logmodel.predict(X.loc[test])
+        logging.info("results x")
         print(classification_report(y.loc[test], predictions))
+
+        # features_df_split = np.array_split(features_df, NUMBER_OF_CORES)
+        # pool = mp.Pool(NUMBER_OF_CORES)
+        # parts = pool.map(self.process_frame, features_df_split)
+        # df = pd.concat(parts)
 
 
 if __name__ == "__main__":
-    print("K")
-    predict('./calculated_features/features-100-refactored.tsv', './datasets/wiki-demo-100.tsv')
+    logging.info("starting")
+    predict('./calculated_features/features-1000-refactored.tsv', './datasets/wiki-demo-1000.tsv')
 
     # print("var1")
     # t1 = time_of_start_computation = datetime.now()
