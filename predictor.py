@@ -18,18 +18,37 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 
 
-def mirror_pair(pair, embeddedness_matrix, adj, existance_mat, marker):
-    embeddedness = embeddedness_matrix[tuple(pair)]
-    # find possible mirror pairs, that should be a. of the same embeddedness, b. unconnected, c. not already chosen
+def mirror_pair(pairs, embeddedness_matrix, adj, existance_mat, marker):
+    embeddedness_hist = Counter(embeddedness_matrix[tuple(pair)] for pair in pairs)
+    # find possible mirror pairs, that should be a. of the same embeddedness_hist, b. unconnected, c. not already chosen
     candidates = zip(*np.where(
-        functools.reduce(np.logical_and,
-                         (embeddedness_matrix == embeddedness, adj == 0, existance_mat == 1, marker == 0)))
-                     )
+        functools.reduce(
+            np.logical_and,
+            (
+                # has the same embeddness as the test data
+                np.isin(embeddedness_matrix, list(embeddedness_hist.keys())),
+                # not connected in the graph
+                adj == 0,
+                # both nodes exists in graph
+                existance_mat == 1,
+                # not already chosen
+                marker == 0
+            )
+        )
+    ))
 
-    candidate = next(candidates, None)
-    if candidate:
-        marker[candidate] = 1
-    return candidate
+    for candidate in candidates:
+        if not embeddedness_hist:
+            return
+
+        candidate_embeddedness = embeddedness_matrix[candidate]
+
+        if candidate_embeddedness in embeddedness_hist and embeddedness_hist[candidate_embeddedness] > 0:
+            embeddedness_hist[candidate_embeddedness] -= 1
+            marker[candidate] = 1
+            yield candidate
+        elif candidate_embeddedness in embeddedness_hist:
+            del embeddedness_hist[candidate]
 
 
 def calc_existence_mat(nodes):
@@ -77,12 +96,11 @@ def split_data_balanced(features_file, tsv_file):
     splitter = []
 
     for idx, test_chunk in enumerate(np.array_split(positives, 10)):
-        logging.info(f"mirroring {idx +1}")
-        mirrors = filter(lambda p: p is not None,
-                         [mirror_pair(p, embeddedness_matrix, adj, existance_mat, marker) for p in test_chunk])
+        logging.info(f"mirroring {idx + 1}")
+        mirrors = mirror_pair(test_chunk, embeddedness_matrix, adj, existance_mat, marker)
         curr_test_vals = map(tuple, [*test_chunk, *mirrors])
 
-        logging.info(f"slicing {idx +1}")
+        logging.info(f"slicing {idx + 1}")
         curr_test = features[features['Unnamed: 0'].isin([str(t) for t in curr_test_vals])]
         curr_train = features.drop(curr_test.index)
         splitter.append((list(curr_train.index), list(curr_test.index)))
@@ -90,10 +108,10 @@ def split_data_balanced(features_file, tsv_file):
 
 
 # def train_and_predict(train, test):
-    # logmodel = LogisticRegression(solver='sag', n_jobs=-1)
-    # logmodel.fit(X.loc[train], y.loc[train])
-    # predictions = logmodel.predict(X.loc[test])
-    # return (classification_report(y.loc[test], predictions))
+# logmodel = LogisticRegression(solver='sag', n_jobs=-1)
+# logmodel.fit(X.loc[train], y.loc[train])
+# predictions = logmodel.predict(X.loc[test])
+# return (classification_report(y.loc[test], predictions))
 
 def predict(features_file, tsv_file):
     data = pd.read_csv(features_file, sep="\t").rename(columns={'Unnamed: 0': 'K'})  # load data set
@@ -106,11 +124,11 @@ def predict(features_file, tsv_file):
     labels = []
     preds = []
     for idx, (train, test) in enumerate(splitter):
-        logging.info(f"classifying {idx +1}")
+        logging.info(f"classifying {idx + 1}")
         logmodel = XGBClassifier(n_jobs=10)
         logmodel.fit(X.loc[train], y.loc[train])
         predictions = logmodel.predict(X.loc[test])
-        logging.info(f"postprocessing {idx +1}")
+        logging.info(f"postprocessing {idx + 1}")
         labels.extend(list(y.loc[test]))
         preds.extend(list(predictions))
     print(classification_report(labels, preds))
