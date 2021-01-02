@@ -16,12 +16,12 @@ from sklearn.model_selection import cross_val_predict
 
 
 def mirror_pair(pair, embeddedness_matrix, adj, existance_mat, marker):
-    embeddedness = embeddedness_matrix[pair]
+    embeddedness = embeddedness_matrix[tuple(pair)]
     # find possible mirror pairs, that should be a. of the same embeddedness, b. unconnected, c. not already chosen
     candidates = zip(*np.where(
         functools.reduce(np.logical_and,
                          (embeddedness_matrix == embeddedness, adj == 0, existance_mat == 1, marker == 0)))
-    )
+                     )
 
     candidate = next(candidates, None)
     if candidate:
@@ -87,14 +87,16 @@ def predict(features_file, tsv_file):
     data = data.drop('K', axis=1)
 
     X, y, splitter = split_data_balanced(features_file, tsv_file)
-    logmodel = LogisticRegression(max_iter=1000, n_jobs=-1)
-    predictions = cross_val_predict(logmodel, X, y, cv=splitter)
-    return classification_report(y, predictions)
+    for train, test in splitter:
+        logmodel = LogisticRegression(max_iter=1000, n_jobs=-1)
+        logmodel.fit(X.loc[train], y.loc[train])
+        predictions = logmodel.predict(X.loc[test])
+        print(classification_report(y.loc[test], predictions))
 
 
 if __name__ == "__main__":
     print("K")
-    print(predict('./calculated_features/features-100-refactored.tsv', './datasets/wiki-demo-100.tsv'))
+    predict('./calculated_features/features-100-refactored.tsv', './datasets/wiki-demo-100.tsv')
 
     # print("var1")
     # t1 = time_of_start_computation = datetime.now()
