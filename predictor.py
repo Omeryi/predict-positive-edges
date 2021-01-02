@@ -1,5 +1,6 @@
 import functools
 import random
+from collections import Counter
 
 import networkx as nx
 import numpy as np
@@ -75,13 +76,13 @@ def split_data_balanced(features_file, tsv_file):
     random.shuffle(positives)
     splitter = []
 
-    for test_chunk in np.array_split(positives, 10):
-        logging.info("mirroring")
+    for idx, test_chunk in enumerate(np.array_split(positives, 10)):
+        logging.info(f"mirroring {idx +1}")
         mirrors = filter(lambda p: p is not None,
                          [mirror_pair(p, embeddedness_matrix, adj, existance_mat, marker) for p in test_chunk])
         curr_test_vals = map(tuple, [*test_chunk, *mirrors])
 
-        logging.info("slicing")
+        logging.info(f"slicing {idx +1}")
         curr_test = features[features['Unnamed: 0'].isin([str(t) for t in curr_test_vals])]
         curr_train = features.drop(curr_test.index)
         splitter.append((list(curr_train.index), list(curr_test.index)))
@@ -102,18 +103,17 @@ def predict(features_file, tsv_file):
     logging.info("splitting")
     X, y, splitter = split_data_balanced(features_file, tsv_file)
 
-    for train, test in splitter:
-        logging.info("classifying X")
+    labels = []
+    preds = []
+    for idx, (train, test) in enumerate(splitter):
+        logging.info(f"classifying {idx +1}")
         logmodel = XGBClassifier(n_jobs=10)
         logmodel.fit(X.loc[train], y.loc[train])
         predictions = logmodel.predict(X.loc[test])
-        logging.info("results x")
-        print(classification_report(y.loc[test], predictions))
-
-        # features_df_split = np.array_split(features_df, NUMBER_OF_CORES)
-        # pool = mp.Pool(NUMBER_OF_CORES)
-        # parts = pool.map(self.process_frame, features_df_split)
-        # df = pd.concat(parts)
+        logging.info(f"postprocessing {idx +1}")
+        labels.extend(list(y.loc[test]))
+        preds.extend(list(predictions))
+    print(classification_report(labels, preds))
 
 
 if __name__ == "__main__":
