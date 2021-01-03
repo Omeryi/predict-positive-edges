@@ -1,6 +1,7 @@
 import functools
 import random
 from collections import Counter
+import multiprocessing as mp
 
 import networkx as nx
 import numpy as np
@@ -107,11 +108,14 @@ def split_data_balanced(features_file, tsv_file):
     return X.drop(['Unnamed: 0'], axis=1), y, splitter
 
 
-# def train_and_predict(train, test):
-# logmodel = LogisticRegression(solver='sag', n_jobs=-1)
-# logmodel.fit(X.loc[train], y.loc[train])
-# predictions = logmodel.predict(X.loc[test])
-# return (classification_report(y.loc[test], predictions))
+def predict_splice(train, test, X, y , idx):
+    logging.info(f"classifying {idx + 1}")
+    logmodel = XGBClassifier(n_jobs=-1)
+    logmodel.fit(X.loc[train], y.loc[train])
+    prediction = logmodel.predict(X.loc[test])
+    logging.info(f"postprocessing {idx + 1}")
+    return y.loc[test], prediction, test
+
 
 def predict(features_file, tsv_file):
     data = pd.read_csv(features_file, sep="\t").rename(columns={'Unnamed: 0': 'K'})  # load data set
@@ -123,54 +127,43 @@ def predict(features_file, tsv_file):
 
     labels = []
     preds = []
-    for idx, (train, test) in enumerate(splitter):
-        logging.info(f"classifying {idx + 1}")
-        logmodel = XGBClassifier(n_jobs=10)
-        logmodel.fit(X.loc[train], y.loc[train])
-        predictions = logmodel.predict(X.loc[test])
-        logging.info(f"postprocessing {idx + 1}")
+    pool = mp.Pool(10)
+    results = [pool.apply(predict_splice, args=(train, test, X, y, idx)) for idx, (train, test) in enumerate(splitter)]
+    pool.close()
+
+    for label, predictions, test in results:
         labels.extend(list(y.loc[test]))
         preds.extend(list(predictions))
+
     print(classification_report(labels, preds))
+    # for idx, (train, test) in enumerate(splitter):
+    #     logging.info(f"classifying {idx + 1}")
+    #     logmodel = XGBClassifier(n_jobs=-1)
+    #     logmodel.fit(X.loc[train], y.loc[train])
+    #     predictions = logmodel.predict(X.loc[test])
+    #     logging.info(f"postprocessing {idx + 1}")
+    #     labels.extend(list(y.loc[test]))
+    #     preds.extend(list(predictions))
+    # print(classification_report(labels, preds))
 
 
 if __name__ == "__main__":
     logging.info("starting")
     predict('./calculated_features/features-1000-refactored.tsv', './datasets/wiki-demo-1000.tsv')
 
-    # print("var1")
-    # t1 = time_of_start_computation = datetime.now()
-    #
-    # with open('out-wiki-ml-varient1-maxiter.tsv', 'w') as f:
-    #     print(predict('./calculated_features/wiki-full-features.tsv', './datasets/wiki.tsv'), file=f)
-    #
-    # t2 = datetime.now()
-    # triads_time = t2 - t1
-    # print(triads_time)
-    #
-    # print("var2")
-    # t1 = time_of_start_computation = datetime.now()
-    # with open('out-wiki-ml-varient2-maxiter.tsv', 'w') as f:
-    #     print(predict('./calculated_features/wiki-varient2-full-features.tsv', './datasets/variant2-wiki.tsv'), file=f)
-    #
-    # t2 = datetime.now()
-    # triads_time = t2 - t1
-    # print(triads_time)
-    #
-    # print("var3")
-    # t1 = time_of_start_computation = datetime.now()
-    # with open('out-wiki-ml-varient3-maxiter.tsv', 'w') as f:
-    #     print(predict('./calculated_features/wiki-varient3-full-features.tsv', './datasets/variant3-wiki.tsv'), file=f)
-    #
-    # t2 = datetime.now()
-    # triads_time = t2 - t1
-    # print(triads_time)
-    #
-    # print("var4")
-    # t1 = time_of_start_computation = datetime.now()
-    # with open('out-wiki-ml-varient4-maxiter.tsv', 'w') as f:
-    #     print(predict('./calculated_features/wiki-varient4-full-features.tsv', './datasets/variant4-wiki.tsv'), file=f)
-    #
-    # t2 = datetime.now()
-    # triads_time = t2 - t1
-    # print(triads_time)
+    logging.info("starting v1")
+
+    with open('out-wiki-ml-variant1.tsv', 'w') as f:
+        print(predict('./calculated_features/wiki-full-features.tsv', './datasets/variant1-wiki.tsv'), file=f)
+
+    logging.info("starting v2")
+    with open('out-wiki-ml-variant2.tsv', 'w') as f:
+        print(predict('./calculated_features/wiki-variant2-full-features.tsv', './datasets/variant2-wiki.tsv'), file=f)
+
+    logging.info("starting v3")
+    with open('out-wiki-ml-variant3.tsv', 'w') as f:
+        print(predict('./calculated_features/wiki-variant3-full-features.tsv', './datasets/variant3-wiki.tsv'), file=f)
+
+    logging.info("starting v4")
+    with open('out-wiki-ml-variant4.tsv', 'w') as f:
+        print(predict('./calculated_features/wiki-variant4-full-features.tsv', './datasets/variant4-wiki.tsv'), file=f)
