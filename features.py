@@ -4,16 +4,17 @@ import networkx as nx
 import itertools
 import numpy as np
 import multiprocessing as mp
+from scipy import sparse
 from tqdm import tqdm
 from datetime import datetime
 
-# Each triad type is represented by four digits as each digit may be 0 or 1.
-# Let w be the common neighbor of two nodes in a triad, u and v:
-# The first digit represent the direction of the edge between u,w: 0 if u points to w, else 1.
-# The second digit represents the sign of the edge between u,w: 0 if it`s positive, else 1.
-# The third digit represents the direction of the edge between v,w: 0 if v points to w, else 1.
-# The fourth digit represents the sign of the edge between v,w: 0 if it`s positive, else 1.
-
+"""Each triad type is represented by four digits as each digit may be 0 or 1.
+Let w be the common neighbor of two nodes in a triad, u and v:
+The first digit represent the direction of the edge between u,w: 0 if u points to w, else 1.
+The second digit represents the sign of the edge between u,w: 0 if it`s positive, else 1.
+The third digit represents the direction of the edge between v,w: 0 if v points to w, else 1.
+The fourth digit represents the sign of the edge between v,w: 0 if it`s positive, else 1.
+"""
 TRIADS_TYPES = [(0, 0, 0, 0),
                 (0, 0, 0, 1),
                 (0, 0, 1, 0),
@@ -41,13 +42,15 @@ class Features_calculator:
         self.graph = None
         self.matrix = None
         self.undirected_graph = None
+        self.embeddedness_matrix = None
 
     @staticmethod
     def build_features_df(graph):
         triads_data = {str(triad): 0 for triad in TRIADS_TYPES}
         degrees_data = {'positive_in_degree(u)': [0], 'positive_out_degree(u)': [0], 'negative_in_degree(u)': [0],
                         'negative_out_degree(u)': [0], 'positive_in_degree(v)': [0], 'positive_out_degree(v)': [0],
-                        'negative_in_degree(v)': [0], 'negative_out_degree(v)': [0], 'edge_sign': [0]}
+                        'negative_in_degree(v)': [0], 'negative_out_degree(v)': [0], 'total_out_degree(u)': [0],
+                        'total_in_degree(v)': [0], 'C(u,v)': [0], 'edge_sign': [0]}
         triads_data.update(degrees_data)
         triads_index = []
         nodes_with_data = set(itertools.chain(*list(graph.edges)))
@@ -104,6 +107,12 @@ class Features_calculator:
 
                 count += 1
 
+            features_df.at[(u, v), 'total_out_degree(u)'] = self.negative_out[int(u)] + self.positive_out[int(u)]
+            features_df.at[(u, v), 'total_in_degree(v)'] = self.negative_in[int(v)] + self.positive_in[int(v)]
+            features_df.at[(u, v), 'C(u,v)'] = self.embeddedness_matrix[int(u), int(v)]
+
+
+
         return features_df
 
     def compute_features(self, tsv_file):
@@ -112,6 +121,12 @@ class Features_calculator:
         self.undirected_graph = graph.to_undirected()
         features_df = self.build_features_df(graph)
         self.matrix = nx.to_numpy_matrix(graph, weight="weight")
+
+        A = sparse.csr_matrix(nx.to_numpy_matrix(graph, weight="weight"))
+        adj = A.todense()
+        A[A != 0] = 1
+        B = A + A.T
+        self.embeddedness_matrix = (B @ B.T).todense()
 
         # demo < 0 -> positive reviews.  demo > 0 -> negative reviews
         # axis = 0 -> incoming.          axis = 1 -> outgoing
@@ -133,7 +148,10 @@ class Features_calculator:
 if __name__ == '__main__':
 
     td = Features_calculator().compute_features("./datasets/wiki-demo-100.tsv")
-    td.to_csv("A.tsv", sep="\t")
+    td.to_csv("assertion.tsv", sep="\t")
+
+    # td = Features_calculator().compute_features("./datasets/variant3-wiki.tsv")
+    # td.to_csv("debug-delete-me.tsv", sep="\t")
 
     # time_of_start_computation = datetime.now()
     # td = A().compute_features("./datasets/wiki-demo-1000.tsv")
