@@ -8,6 +8,13 @@ from scipy import sparse
 from tqdm import tqdm
 from datetime import datetime
 
+import logging
+
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-8s %(message)s',
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S')
+
 """Each triad type is represented by four digits as each digit may be 0 or 1.
 Let w be the common neighbor of two nodes in a triad, u and v:
 The first digit represent the direction of the edge between u,w: 0 if u points to w, else 1.
@@ -150,12 +157,19 @@ if __name__ == '__main__':
     td = Features_calculator().compute_features("./datasets/wiki-demo-100.tsv")
     td.to_csv("assertion.tsv", sep="\t")
 
-    # td = Features_calculator().compute_features("./datasets/variant3-wiki.tsv")
-    # td.to_csv("debug-delete-me.tsv", sep="\t")
+    logging.info("V1")
+    td = Features_calculator().compute_features("./datasets/variant1-wiki.tsv")
+    td.to_csv("var1-features.tsv", sep="\t")
 
-    # time_of_start_computation = datetime.now()
-    # td = A().compute_features("./datasets/wiki-demo-1000.tsv")
-    # td.to_csv("wiki-features-1000-lines-v2", sep="\t")
-    # time_of_end_computation = datetime.now()
-    # triads_time = time_of_end_computation - time_of_start_computation
-    # print(triads_time)
+    logging.info("V2")
+    td = Features_calculator().compute_features("./datasets/variant2-wiki.tsv")
+    td.to_csv("var2-features.tsv", sep="\t")
+
+    logging.info("V3")
+    td = Features_calculator().compute_features("./datasets/variant3-wiki.tsv")
+    td.to_csv("var3-features.tsv", sep="\t")
+
+    logging.info("V4")
+    td = Features_calculator().compute_features("./datasets/variant4-wiki.tsv")
+    td.to_csv("var4-features.tsv", sep="\t")
+
