@@ -58,6 +58,7 @@ class Features_calculator:
                         'negative_out_degree(u)': [0], 'positive_in_degree(v)': [0], 'positive_out_degree(v)': [0],
                         'negative_in_degree(v)': [0], 'negative_out_degree(v)': [0], 'total_out_degree(u)': [0],
                         'total_in_degree(v)': [0], 'C(u,v)': [0], 'edge_sign': [0]}
+
         triads_data.update(degrees_data)
         triads_index = []
         nodes_with_data = set(itertools.chain(*list(graph.edges)))
