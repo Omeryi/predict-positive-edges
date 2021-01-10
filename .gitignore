@@ -9,3 +9,4 @@ __pycache__/
 *.tsv
 
 calculated_features/
+trash/
