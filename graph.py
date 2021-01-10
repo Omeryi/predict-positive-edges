@@ -22,7 +22,6 @@ def build_graph(tsv, record_fake_data=False):
     tsv_file = open(tsv, "r")
     df = pd.read_csv(tsv, sep="\t")
     # skip headers line:
-    next(tsv_file)
 
     real_nodes = set()
 
@@ -30,10 +29,10 @@ def build_graph(tsv, record_fake_data=False):
         if i not in graph.nodes():
             graph.add_node(i)
 
-    for line in csv.reader(tsv_file, delimiter="\t"):
-        graph.add_edge(int(line[0]), int(line[1]), weight=int(line[2]))
-        real_nodes.add(int(line[0]))
-        real_nodes.add(int(line[1]))
+    for _, line in df.iterrows():
+        graph.add_edge(int(line.FromNodeId), int(line.ToNodeId), weight=int(line.Sign))
+        real_nodes.add(int(line.FromNodeId))
+        real_nodes.add(int(line.ToNodeId))
 
     if record_fake_data:
         return graph, real_nodes
@@ -93,7 +92,7 @@ def create_graph_variants(tsv, name):
 # This one was just for fun
 def draw_graph(graph):
     pos = nx.spring_layout(graph)
-    plt.figure(30, figsize=(30, 30))
+    plt.figure(10, figsize=(10, 10))
     nx.draw(graph, pos, node_size=1500, font_size=10, with_labels=True)
     nx.draw_networkx_edge_labels(graph, pos, edge_labels=nx.get_edge_attributes(graph, 'weight'))
 
