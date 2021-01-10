@@ -10,6 +10,8 @@ from datetime import datetime
 
 import logging
 
+EMBEDDEDNESS_TRESHOLD = 25
+
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
     level=logging.INFO,
@@ -51,21 +53,20 @@ class Features_calculator:
         self.undirected_graph = None
         self.embeddedness_matrix = None
 
-    @staticmethod
-    def build_features_df(graph):
+
+    def build_features_df(self, graph):
         triads_data = {str(triad): 0 for triad in TRIADS_TYPES}
-        degrees_data = {'positive_in_degree(u)': [0], 'positive_out_degree(u)': [0], 'negative_in_degree(u)': [0],
-                        'negative_out_degree(u)': [0], 'positive_in_degree(v)': [0], 'positive_out_degree(v)': [0],
-                        'negative_in_degree(v)': [0], 'negative_out_degree(v)': [0], 'total_out_degree(u)': [0],
-                        'total_in_degree(v)': [0], 'C(u,v)': [0], 'edge_sign': [0]}
+        degrees_data = {'edge_sign': [0]}
 
         triads_data.update(degrees_data)
         triads_index = []
         nodes_with_data = set(itertools.chain(*list(graph.edges)))
         for (u, v) in itertools.combinations(nodes_with_data, 2):
-            triads_index.extend([(u, v), (v, u)])
+            if self.embeddedness_matrix[int(u), int(v)] >= EMBEDDEDNESS_TRESHOLD:
+                triads_index.extend([(u, v), (v, u)])
 
-        features_df = pd.DataFrame(triads_data, triads_index)
+        features_df = pd.DataFrame(triads_data, triads_index)#.astype('float')
+
         return features_df
 
     @staticmethod
@@ -92,32 +93,37 @@ class Features_calculator:
 
     def process_frame(self, features_df):
         for (u, v), row in features_df.iterrows():
+
             if self.matrix[u, v] != 0:
                 features_df.at[(u, v), 'edge_sign'] = self.matrix[u, v]
 
             triads_dict_for_pair = {triad: 0 for triad in TRIADS_TYPES}
+            triads_count = 0
             for w in sorted(nx.common_neighbors(self.undirected_graph, u, v)):
                 for triad in TRIADS_TYPES:
                     triad_status = self.get_triad_status(u, w, v, triad, self.matrix)
                     if triad_status:
                         triads_dict_for_pair[triad] += 1
+
+            triads_count = float(sum(triads_dict_for_pair.values()))
             for triad in triads_dict_for_pair.keys():
-                features_df.at[(u, v), str(triad)] = triads_dict_for_pair[triad]
+                features_df.at[(u, v), str(triad)] = triads_dict_for_pair[triad] #if not triads_count else round((triads_dict_for_pair[triad]/triads_count), 4)
 
-            count = 0
-            for node in (u, v):
-                node_id = int(node)
 
-                features_df.at[(u, v), 'positive_in_degree({})'.format('v' if count else 'u')] = self.positive_in[node_id]
-                features_df.at[(u, v), 'positive_out_degree({})'.format('v' if count else 'u')] = self.positive_out[node_id]
-                features_df.at[(u, v), 'negative_in_degree({})'.format('v' if count else 'u')] = self.negative_in[node_id]
-                features_df.at[(u, v), 'negative_out_degree({})'.format('v' if count else 'u')] = self.negative_out[node_id]
-
-                count += 1
-
-            features_df.at[(u, v), 'total_out_degree(u)'] = self.negative_out[int(u)] + self.positive_out[int(u)]
-            features_df.at[(u, v), 'total_in_degree(v)'] = self.negative_in[int(v)] + self.positive_in[int(v)]
-            features_df.at[(u, v), 'C(u,v)'] = self.embeddedness_matrix[int(u), int(v)]
+            # count = 0
+            # for node in (u, v):
+            #     node_id = int(node)
+            #
+            #     features_df.at[(u, v), 'positive_in_degree({})'.format('v' if count else 'u')] = self.positive_in[node_id]
+            #     features_df.at[(u, v), 'positive_out_degree({})'.format('v' if count else 'u')] = self.positive_out[node_id]
+            #     features_df.at[(u, v), 'negative_in_degree({})'.format('v' if count else 'u')] = self.negative_in[node_id]
+            #     features_df.at[(u, v), 'negative_out_degree({})'.format('v' if count else 'u')] = self.negative_out[node_id]
+            #
+            #     count += 1
+            #
+            # features_df.at[(u, v), 'total_out_degree(u)'] = self.negative_out[int(u)] + self.positive_out[int(u)]
+            # features_df.at[(u, v), 'total_in_degree(v)'] = self.negative_in[int(v)] + self.positive_in[int(v)]
+            # features_df.at[(u, v), 'C(u,v)'] = self.embeddedness_matrix[int(u), int(v)]
 
 
 
@@ -127,14 +133,16 @@ class Features_calculator:
         graph = helper.build_graph(tsv_file)
         self.graph = graph
         self.undirected_graph = graph.to_undirected()
-        features_df = self.build_features_df(graph)
-        self.matrix = nx.to_numpy_matrix(graph, weight="weight")
 
         A = sparse.csr_matrix(nx.to_numpy_matrix(graph, weight="weight"))
         adj = A.todense()
         A[A != 0] = 1
         B = A + A.T
         self.embeddedness_matrix = (B @ B.T).todense()
+
+        features_df = self.build_features_df(graph)
+        self.matrix = nx.to_numpy_matrix(graph, weight="weight")
+
 
         # demo < 0 -> positive reviews.  demo > 0 -> negative reviews
         # axis = 0 -> incoming.          axis = 1 -> outgoing
@@ -154,23 +162,24 @@ class Features_calculator:
 
 
 if __name__ == '__main__':
+    logging.info("start")
 
-    td = Features_calculator().compute_features("./datasets/wiki-demo-100.tsv")
-    td.to_csv("assertion.tsv", sep="\t")
+    td = Features_calculator().compute_features("./datasets/wiki-demo-1000.tsv")
+    td.to_csv("assertion-1000-TRESHOLD.tsv", sep="\t")
 
     logging.info("V1")
     td = Features_calculator().compute_features("./datasets/variant1-wiki.tsv")
-    td.to_csv("var1-features.tsv", sep="\t")
+    td.to_csv("var1-features-ִtreshold.tsv", sep="\t")
 
     logging.info("V2")
     td = Features_calculator().compute_features("./datasets/variant2-wiki.tsv")
-    td.to_csv("var2-features.tsv", sep="\t")
+    td.to_csv("var2-features-treshold.tsv", sep="\t")
 
     logging.info("V3")
     td = Features_calculator().compute_features("./datasets/variant3-wiki.tsv")
-    td.to_csv("var3-features.tsv", sep="\t")
+    td.to_csv("var3-features-treshold.tsv", sep="\t")
 
     logging.info("V4")
     td = Features_calculator().compute_features("./datasets/variant4-wiki.tsv")
-    td.to_csv("var4-features.tsv", sep="\t")
+    td.to_csv("var4-features-treshold.tsv", sep="\t")
 
