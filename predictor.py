@@ -1,5 +1,6 @@
 import contextlib
 import functools
+import itertools
 import random
 from collections import Counter
 import multiprocessing as mp
@@ -107,36 +108,34 @@ def split_data_balanced(features_file, tsv_file):
     random.shuffle(positives)
     splitter = []
 
+    blabla = []
     for idx, test_chunk in enumerate(np.array_split(positives, 10)):
         logger.info(f"mirroring {idx + 1}")
         mirrors = mirror_pair(test_chunk, embeddedness_matrix, adj, existance_mat, marker)
-        curr_test_vals = map(tuple, [*test_chunk, *mirrors])
+        curr_test_vals = list(map(tuple, [*test_chunk, *mirrors]))
 
-        logger.info(f"slicing {idx + 1}")
-        curr_test = features[features['K'].isin([str(t) for t in curr_test_vals])]
-        curr_train = features.drop(curr_test.index)
+        blabla.append(curr_test_vals)
+
+    flattened = list(itertools.chain(*blabla))
+    balanced_df = features[features['K'].isin([str(t) for t in flattened])]
+
+    for idx, b in enumerate(blabla):
+        logger.info(f"feeding {idx + 1}")
+        curr_test = balanced_df[balanced_df['K'].isin([str(t) for t in b])]
+        curr_train = balanced_df.drop(curr_test.index)
         splitter.append((list(curr_train.index), list(curr_test.index)))
     return X.drop(['K'], axis=1), y, splitter
 
 
 def predict_splice(train, test, X, y, idx):
-    parameters = {
-        # 'objective': 'binary',
-        # 'metric': 'auc',
-        'is_unbalance': 'true',
-        # 'feature_fraction': 0.5,
-        # 'bagging_fraction': 0.5,
-        # 'bagging_freq': 20,
-        # 'num_threads': 2,
-        # 'seed': 76
-    }
+
 
     logger.info(f"classifying {idx + 1}")
 
     logmodel = lgbm.LGBMClassifier()
     #logmodel = XGBClassifier()
     logmodel.fit(X.loc[train], y.loc[train])
-    prediction = logmodel.predict(parameters, X.loc[test])
+    prediction = logmodel.predict(X.loc[test])
     with open(f'C:/Users/omyiz/Documents/repos/positive_edges_prediction/xxxxxx.txt', 'w') as xx:
         xx.write(classification_report(y.loc[test], prediction))
     logger.info(f"postprocessing {idx + 1} XXXXXXXX")
@@ -193,25 +192,25 @@ def timer():
 
 
 if __name__ == "__main__":
-    logger = logging.getLogger()
+    logger = logging.getLogger("logs")
     logger.info("starting")
 
     with open('100-predict.tsv', 'w') as f:
-        print(predict('./calculated_features/wiki-features-1000-lines.txt', './datasets/wiki-demo-1000.tsv'), file=f)
+        print(predict('./calculated_features/assertion-normalize-1000-float-round.tsv', './datasets/wiki-demo-1000.tsv'), file=f)
 
-    # logger.info("starting v1")
-    #
-    # with open('out-wiki-ml-variant1.tsv', 'w') as f:
-    #     print(predict('./calculated_features/var1-features.tsv', './datasets/variant1-wiki.tsv'), file=f)
-    #
-    # logger.info("starting v2")
-    # with open('out-wiki-ml-variant2.tsv', 'w') as f:
-    #     print(predict('./calculated_features/var2-features.tsv', './datasets/variant2-wiki.tsv'), file=f)
-    #
-    # logger.info("starting v3")
-    # with open('out-wiki-ml-variant3.tsv', 'w') as f:
-    #     print(predict('./calculated_features/var3-features.tsv', './datasets/variant3-wiki.tsv'), file=f)
-    #
-    # logger.info("starting v4")
-    # with open('out-wiki-ml-variant4.tsv', 'w') as f:
-    #     print(predict('./calculated_features/var4-features.tsv', './datasets/variant4-wiki.tsv'), file=f)
+    logger.info("starting v1")
+
+    with open('out-wiki-ml-variant1.tsv', 'w') as f:
+        print(predict('./calculated_features_treshold/var1-features-treshold.tsv', './datasets/variant1-wiki.tsv'), file=f)
+
+    logger.info("starting v2")
+    with open('out-wiki-ml-variant2.tsv', 'w') as f:
+        print(predict('./calculated_features_treshold/var2-features-treshold.tsv', './datasets/variant2-wiki.tsv'), file=f)
+
+    logger.info("starting v3")
+    with open('out-wiki-ml-variant3.tsv', 'w') as f:
+        print(predict('./calculated_features_treshold/var3-features-treshold.tsv', './datasets/variant3-wiki.tsv'), file=f)
+
+    logger.info("starting v4")
+    with open('out-wiki-ml-variant4.tsv', 'w') as f:
+        print(predict('./calculated_features_treshold/var4-features-treshold.tsv', './datasets/variant4-wiki.tsv'), file=f)
