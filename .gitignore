@@ -8,5 +8,5 @@ __pycache__/
 .idea
 *.tsv
 
-calculated_features/
+not for commit/
 trash/
