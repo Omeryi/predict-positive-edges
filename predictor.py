@@ -145,17 +145,17 @@ if __name__ == "__main__":
     logger = logging.getLogger()
 
     logger.info("starting v1")
-    with open(PREDICTIONS_PATH + 'wiki-ml-variant1.tsv', 'w') as f:
+    with open(PREDICTIONS_PATH + 'wiki-ml-variant1.txt', 'w') as f:
         print(predict(FEATURES_PATH + 'var1-features.tsv', DATASET_PATH + 'variant1-wiki.tsv'), file=f)
 
     logger.info("starting v2")
-    with open(PREDICTIONS_PATH + 'wiki-ml-variant2.tsv', 'w') as f:
+    with open(PREDICTIONS_PATH + 'wiki-ml-variant2.txt', 'w') as f:
         print(predict(FEATURES_PATH + 'var2-features.tsv', DATASET_PATH + 'variant2-wiki.tsv'), file=f)
 
     logger.info("starting v3")
-    with open(PREDICTIONS_PATH + 'wiki-ml-variant3.tsv', 'w') as f:
+    with open(PREDICTIONS_PATH + 'wiki-ml-variant3.txt', 'w') as f:
         print(predict(FEATURES_PATH + 'var3-features.tsv', DATASET_PATH + 'variant3-wiki.tsv'), file=f)
 
     logger.info("starting v4")
-    with open(PREDICTIONS_PATH + 'wiki-ml-variant4.tsv', 'w') as f:
+    with open(PREDICTIONS_PATH + 'wiki-ml-variant4.txt', 'w') as f:
         print(predict(FEATURES_PATH + 'var4-features.tsv', DATASET_PATH + 'variant4-wiki.tsv'), file=f)
