@@ -3,14 +3,15 @@ import collections
 
 DATASET_PATH = "./datasets/"
 WIKI_FILE_NAME = "wikiElec.ElecBs3.txt"
-TSV_FILE_NAME = "wiki_without_aggregation.tsv"
+TSV_FILE_NAME = "variant1-wiki.tsv"
 TSV_FIELDS = ["FromNodeId", "ToNodeId", "Sign"]
+
 
 # Create list of lists as each sublist represents a given vote
 def tokenize_wiki():
     wiki_file = open(DATASET_PATH + WIKI_FILE_NAME, encoding="latin-1")
     lines = wiki_file.readlines()
-    
+
     res = []
     current = []
     for line in lines:
@@ -24,6 +25,7 @@ def tokenize_wiki():
     if current:
         res.append(current)
     return res
+
 
 # Extract all votes from each vote documanted
 def normalize_wiki():
@@ -40,21 +42,25 @@ def normalize_wiki():
 
     return res
 
+
 def write_wiki_file(normalized_wiki):
-    with open(DATASET_PATH + TSV_FILE_NAME, "w", newline = "") as csvfile:
+    with open(DATASET_PATH + TSV_FILE_NAME, "w", newline="") as csvfile:
         fieldnames = TSV_FIELDS
         writer = csv.DictWriter(csvfile, delimiter="\t", fieldnames=fieldnames)
 
         writer.writeheader()
-        
+
         for voter_id, voter_votes in normalized_wiki.items():
             for voted_user, choice in voter_votes.items():
                 if choice == 0:
                     continue
                 writer.writerow({TSV_FIELDS[0]: voter_id, TSV_FIELDS[1]: voted_user, TSV_FIELDS[2]: choice})
 
+
 def create_wiki_tsv_file():
     normalized = normalize_wiki()
     write_wiki_file(normalized)
 
-    
+
+if __name__ == '__main__':
+    create_wiki_tsv_file()
