@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 from sklearn.metrics import classification_report
-import lightgbm as lgbm
+from sklearn.linear_model import LogisticRegression
 
 import graph as helper
 import logging
@@ -128,7 +128,7 @@ def predict(features_file, tsv_file):
     # Predict for each 1 out of 10 chunks: print classification report for each chunk to file (for debug purposes)
     for idx, (train, test) in enumerate(splitter):
         logger.info(f"classifying {idx + 1}")
-        logmodel = lgbm.LGBMClassifier()
+        logmodel = LogisticRegression()
         logmodel.fit(X.loc[train], y.loc[train])
         predictions = logmodel.predict(X.loc[test])
         logger.info(f"postprocessing {idx + 1}")
